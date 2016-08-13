@@ -40,7 +40,7 @@ function pad(num, size) {
 }
 
 document.getElementById('pokemon-checkbox').checked = getFromStorage("displayPokemons", "true");
-document.getElementById('gyms-checkbox').checked = getFromStorage("displayGyms", "true");
+document.getElementById('gyms-checkbox');
 document.getElementById('coverage-checkbox').checked = getFromStorage("displayCoverage", "true");
 
 
