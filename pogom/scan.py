@@ -119,7 +119,7 @@ class Scanner(Thread):
 
             if (not self.scan_config.SCAN_LOCATIONS or
                     not config.get('ACCOUNTS', None)):
-                time.sleep(12)
+                time.sleep(random.randrange(10,13))
                 continue
             ScanMetrics.STEPS_COMPLETED = 0
             scan_start_time = time.time()
