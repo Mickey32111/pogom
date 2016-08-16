@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 timers = dict()
 sent = dict()
 #read the database
-con = lite.connect('pogom.db',check_same_thread=False)
+con = lite.connect('/Users/michaelsmith/Desktop/MickScan Sync/pogom.db',check_same_thread=False)
 cur = con.cursor()
 
 #pokemon:
