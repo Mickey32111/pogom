@@ -16,7 +16,6 @@ import os
 from . import config
 from .models import Pokemon, Gym, Pokestop
 from .scan import ScanMetrics, Scanner
-from .utils import get_locale
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +38,6 @@ class Pogom(Flask):
         self.route('/config', methods=['GET'])(self.get_config_site)
         self.route('/config', methods=['POST'])(self.post_config_site)
         self.route('/login', methods=['GET', 'POST'])(self.login)
-        self.route('/locale', methods=['GET'])(self.locale)
 
     def is_authenticated(self):
         if config.get('CONFIG_PASSWORD', None) and not request.cookies.get("auth") == config['AUTH_KEY']:
@@ -78,8 +76,6 @@ class Pogom(Flask):
 
         return render_template(
             'config.html',
-            locale=config.get('LOCALE', ''),
-            locales_available=config.get('LOCALES_AVAILABLE', []),
             gmaps_key=config.get('GOOGLEMAPS_KEY', None),
             accounts=config.get('ACCOUNTS', []),
             password=config.get('CONFIG_PASSWORD', None))
@@ -88,7 +84,6 @@ class Pogom(Flask):
         if not self.is_authenticated():
             return redirect(url_for('login'))
 
-        config['LOCALE'] = request.form.get('locale', 'en')
         config['GOOGLEMAPS_KEY'] = request.form.get('gmapsKey', '')
 
         pw = request.form.get('configPassword', None)
@@ -120,8 +115,6 @@ class Pogom(Flask):
 
         resp = make_response(render_template(
             'config.html',
-            locale=config.get('LOCALE', ''),
-            locales_available=config.get('LOCALES_AVAILABLE', []),
             gmaps_key=config.get('GOOGLEMAPS_KEY', None),
             accounts=config.get('ACCOUNTS', []),
             password=config.get('CONFIG_PASSWORD', None),
@@ -143,7 +136,6 @@ class Pogom(Flask):
 
         with open(config_path, 'w') as f:
             data = {'GOOGLEMAPS_KEY': config['GOOGLEMAPS_KEY'],
-                    'LOCALE': config['LOCALE'],
                     'CONFIG_PASSWORD': config['CONFIG_PASSWORD'],
                     'SCAN_LOCATIONS': self.scan_config.SCAN_LOCATIONS.values(),
                     'ACCOUNTS': config['ACCOUNTS']}
@@ -219,9 +211,6 @@ class Pogom(Flask):
         stats = Pokemon.get_stats()
         count = sum(p['count'] for p in stats)
         return render_template('stats.html', pokemons=Pokemon.get_stats(), total=count)
-
-    def locale(self):
-        return jsonify(get_locale())
 
 
 class CustomJSONEncoder(JSONEncoder):

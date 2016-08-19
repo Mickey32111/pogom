@@ -66,7 +66,6 @@ class AuthPtc(Auth):
         except Exception as e:
             self.log.error('PTC Login failed.')
             self.log.debug('PTC Login fail: {}'.format(e))
-            return False
 
         try:
             jdata = json.loads(r.content.decode('utf-8'))
@@ -89,7 +88,6 @@ class AuthPtc(Auth):
         except Exception as e:
             self.log.error('PTC Login failed.')
             self.log.debug('PTC Login fail: {}'.format(e))
-            return False
 
         ticket = None
         try:
@@ -136,7 +134,6 @@ class AuthPtc(Auth):
             except Exception as e:
                 self.log.error('PTC Login failed.')
                 self.log.debug('PTC Login fail: {}'.format(e))
-                return False
 
             qs = r2.content.decode('utf-8')
             token_data = parse_qs(qs)

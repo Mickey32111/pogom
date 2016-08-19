@@ -31,7 +31,6 @@ def read_config(scan_config):
     except:
         c = {}
 
-    config['LOCALE'] = c.get('LOCALE', 'en')
     config['GOOGLEMAPS_KEY'] = c.get('GOOGLEMAPS_KEY', None)
     config['CONFIG_PASSWORD'] = c.get('CONFIG_PASSWORD', None)
     config['ACCOUNTS'] = c.get('ACCOUNTS', [])

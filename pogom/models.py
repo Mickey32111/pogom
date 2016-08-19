@@ -10,21 +10,13 @@ from datetime import datetime
 from base64 import b64encode
 import threading
 
-from .utils import get_pokemon_name, get_args
-from playhouse.db_url import connect
+from .utils import get_pokemon_name
 
-
-args = get_args()
-
-if args.db != 'sqlite':
-    db = connect(args.db)
-else:
-    db = SqliteDatabase('pogom.db', pragmas=(
-        ('journal_mode', 'WAL'),
-        ('cache_size', 10000),
-        ('mmap_size', 1024 * 1024 * 32),
-    ))
-
+db = SqliteDatabase('pogom.db', pragmas=(
+    ('journal_mode', 'WAL'),
+    ('cache_size', 10000),
+    ('mmap_size', 1024 * 1024 * 32),
+))
 log = logging.getLogger(__name__)
 lock = threading.Lock()
 

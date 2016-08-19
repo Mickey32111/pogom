@@ -26,28 +26,23 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-H', '--host', help='Set web server listening host', default='127.0.0.1')
     parser.add_argument('-P', '--port', type=int, help='Set web server listening port', default=5000)
-    parser.add_argument('--db', help='Connection String to be used. (default: sqlite)',
-                        default='sqlite')
+
     parser.add_argument('-d', '--debug', type=str.lower, help='Debug Level [info|debug]', default=None)
 
     return parser.parse_args()
 
 
 def get_pokemon_name(pokemon_id):
-    return get_locale()[str(pokemon_id)]
-
-def get_locale():
-    if (not hasattr(get_locale, 'names')
-            or config['LOCALE'] != get_locale.locale):
-        get_locale.locale = config['LOCALE']
+    if not hasattr(get_pokemon_name, 'names'):
         file_path = os.path.join(
                 config['ROOT_PATH'],
                 config['LOCALES_DIR'],
                 'pokemon.{}.json'.format(config['LOCALE']))
-        with open(file_path, 'r') as f:
-            get_locale.names = json.loads(f.read())
 
-    return get_locale.names
+        with open(file_path, 'r') as f:
+            get_pokemon_name.names = json.loads(f.read())
+
+    return get_pokemon_name.names[str(pokemon_id)]
 
 
 def get_encryption_lib_path():
