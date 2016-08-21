@@ -178,6 +178,9 @@ class Pogom(Flask):
         if request.args.get('gyms', 'true') == 'true':
             d['gyms'] = Gym.get_all()
 
+        if request.args.get('spawnhistory', 'false') == 'true':
+            d['spawnhistory'] = Pokemon.get_spawnhistory_stats()
+
         return jsonify(d)
 
     def cover(self):
