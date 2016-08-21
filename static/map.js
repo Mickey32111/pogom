@@ -83,7 +83,7 @@ $selectExclude.on("change", function (e) {
 $selectSpawnHistory.on("change", function (e) {
     spawnHistory = $selectSpawnHistory.val().map(Number);
     
-    clearStaleSpawnHistoryMarkers();
+    updateSpawnHistoryMarkers(false);
 });
 
 $heatMapMons.on("change", function (e){
@@ -412,16 +412,32 @@ function clearStaleMarkers(){
     });
 }
 
-function clearStaleSpawnHistoryMarkers(){
-    if (spawnHistory.length === 0)
-        return false;
-
+function updateSpawnHistoryMarkers(onlyHideMarkers){
     $.each(map_spawnhistory, function(key, value) {
-        var filteredPokemons = listOfFilteredSpawnPokemons(map_spawnhistory[key]);
+        var filteredPokemons = listOfFilteredSpawnPokemons(value);
         if (filteredPokemons.length === 0) {
-            map_spawnhistory[key].marker.setMap(null);
-            console.log("removing spawn with key " + key);
-            delete map_spawnhistory[key];
+            //Only remove item from map
+            if (map_spawnhistory[key].marker)
+                map_spawnhistory[key].marker.setMap(null);
+        }
+        //Do not update the markers when we only want to remove the 'hidden' ones by filter or something..
+        else if (!onlyHideMarkers) {
+            if (!map_spawnhistory[key].marker) {
+                //No marker, create marker
+                map_spawnhistory[key].marker = setupSpawnhistoryMarker(item, filteredPokemons);
+            }
+            else {
+                // Marker found, only update the info window in case of any pokemons has been found since last update
+                map_spawnhistory[key].marker.infoWindow = new google.maps.InfoWindow({
+                    content: spawnLabel(value.latitude, value.longitude, filteredPokemons),
+                    disableAutoPan: true
+                });
+
+                if (map_spawnhistory[key].marker.map === null) {
+                    // Make the marker visible
+                    map_spawnhistory[key].marker.setMap(map);
+                }
+            }
         }
     });
 }
@@ -609,22 +625,29 @@ function updateMap() {
             var filteredPokemons = listOfFilteredSpawnPokemons(item);
 
             // No pokemons for spawnpoint, user filtered on specific pokemons..
-            if (filteredPokemons.length === 0)
-                return true;
+            // Add it to the history list, but do not add it to the map
+            var addToMap = filteredPokemons.length > 0;
 
             if (item.spawnpoint_id in map_spawnhistory) {
-                if (map_spawnhistory[item.spawnpoint_id].last_encounter_id != item.last_encounter_id) {
-                    map_spawnhistory[item.spawnpoint_id].marker.setMap(null);
-                    map_spawnhistory[item.spawnpoint_id].marker = setupSpawnhistoryMarker(item, filteredPokemons);
+
+                if (map_spawnhistory[item.spawnpoint_id].last_encounter_id === item.last_encounter_id) {
+                    // Already uptodate. Continue to next item
+                    return true;
                 }
+
+                if (map_spawnhistory[item.spawnpoint_id].marker)
+                    map_spawnhistory[item.spawnpoint_id].marker.setMap(null);
             }
-            else {
+
+            if (addToMap)
                 item.marker = setupSpawnhistoryMarker(item, filteredPokemons);
-                map_spawnhistory[item.spawnpoint_id] = item;
-            }
+
+            // Add item to list
+            map_spawnhistory[item.spawnpoint_id] = item;
         });
 
         clearStaleMarkers();
+        updateSpawnHistoryMarkers(true);
     }).fail(function() {
         $lastRequestLabel.removeClass('label-success label-warning');
         $lastRequestLabel.addClass('label-danger');
