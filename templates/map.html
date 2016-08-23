@@ -280,6 +280,11 @@ span.select2 { width: 100% !important; }
                             <input type="checkbox" id="coverage-checkbox">
                             <label for="coverage-checkbox">Show Map Coverage</label><br>
                         </div>
+                        <div class="chckbox">
+                         <input type="checkbox" id="spawnhistory-checkbox">
+                         <label for="spawnhistory-checkbox">Show spawn history</label>
+                         <br>
+                     </div>
                     </fieldset>
                     <label for="exclude-pokemon">
                         Hide common Pokemon:
@@ -291,14 +296,18 @@ span.select2 { width: 100% !important; }
                         Show a heatmap of pokemons:
                         <select id="heat-map-mons" multiple="multiple"></select>
                       </label>
-                      </p>
+					  </p>
+					  <p>
+                     <label for="spawn-history">
+                         Show spawn history for (empty for all):
+                         <select id="spawn-history" multiple="multiple"></select>
+                     </label>
+                 </p>
                       <p>
                         <center><a href="stats">Stats and Notifications Settings</a></center>
                     </p>
                     <p><center>
                     <b>Our ads have been suspended until further notice :(</b>
-                    </p>
-                    <p>
                     <b><i>Please consider donating directly.</b></i>
                     </p>
                     <p>
@@ -356,4 +365,3 @@ span.select2 { width: 100% !important; }
 	</script>
 
 </html>
-

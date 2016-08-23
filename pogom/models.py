@@ -8,6 +8,8 @@ from peewee import Model, SqliteDatabase, InsertQuery, IntegerField, \
     CharField, FloatField, BooleanField, DateTimeField, fn, SQL
 from datetime import datetime
 from base64 import b64encode
+from itertools import groupby
+from operator import itemgetter
 import threading
 
 from .utils import get_pokemon_name, get_args
@@ -97,6 +99,41 @@ class Pokemon(BaseModel):
             p['pokemon_name'] = get_pokemon_name(p['pokemon_id'])
 
         return pokemons
+
+    @classmethod
+    def get_spawnhistory_stats(cls):
+        query = (Pokemon
+            .select(Pokemon.encounter_id, Pokemon.pokemon_id, Pokemon.spawnpoint_id, Pokemon.latitude, Pokemon.longitude, Pokemon.disappear_time)
+            .order_by(Pokemon.spawnpoint_id, -Pokemon.disappear_time)
+            .dicts())
+
+        spawnhistory = []
+        for key, group in groupby(list(query), itemgetter('spawnpoint_id')):
+            data = []
+            last_encounter_id = None
+            latitude = None
+            longitude = None
+            for p in group:
+                if last_encounter_id is None:
+                    latitude = p['latitude']
+                    longitude = p['longitude']
+                    last_encounter_id = p['encounter_id']
+                
+                data.append({
+                    'pokemon_id': p['pokemon_id'],
+                    'disappear_time': p['disappear_time'],
+                    'pokemon_name': get_pokemon_name(p['pokemon_id'])
+                    })
+
+            spawnhistory.append({
+                'spawnpoint_id': key,
+                'latitude': latitude,
+                'longitude': longitude,
+                'last_encounter_id': last_encounter_id,
+                'data': data
+            })
+
+        return spawnhistory
 
 class Pokestop(BaseModel):
     pokestop_id = CharField(primary_key=True)

@@ -9,6 +9,9 @@ var $scanPercentLabel = $(".current-scan-percent");
 var $selectExclude = $("#exclude-pokemon");
 var excludedPokemon = [];
 
+var $selectSpawnHistory = $("#spawn-history");
+var spawnHistory = [];
+
 var map;
 var scanLocations = new Map();
 var coverCircles = [];
@@ -17,6 +20,7 @@ var newLocationMarker;
 var $heatMapMons = $("#heat-map-mons");
 var heatMapData = {};
 var pokeList = [];  // contains all 150 pokemon in form { id: id, text: name}
+var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
 
 
 try {
@@ -41,6 +45,7 @@ function pad(num, size) {
 
 document.getElementById('pokemon-checkbox').checked = getFromStorage("displayPokemons", "true");
 document.getElementById('gyms-checkbox');
+document.getElementById('spawnhistory-checkbox').checked = getFromStorage("displaySpawnhistory", "false");
 document.getElementById('coverage-checkbox').checked = getFromStorage("displayCoverage", "true");
 
 
@@ -56,9 +61,15 @@ $.getJSON("locale").done(function(data) {
     });
     $selectExclude.val(excludedPokemon).trigger("change");
 
+    $selectSpawnHistory.select2({
+        placeholder: "Type to see spawn history of Pokemon",
+        data: pokeList
+    });
+    $selectSpawnHistory.val(spawnHistory).trigger("change");
+
     $heatMapMons.select2({
-      placeholder: "Type to add a heatmap filter",
-      data: pokeList
+        placeholder: "Type to add a heatmap filter",
+        data: pokeList
     });
 });
 
@@ -67,6 +78,12 @@ $selectExclude.on("change", function (e) {
     excludedPokemon = $selectExclude.val().map(Number);
     localStorage.excludedPokemon = JSON.stringify(excludedPokemon);
     clearStaleMarkers();
+});
+
+$selectSpawnHistory.on("change", function (e) {
+    spawnHistory = $selectSpawnHistory.val().map(Number);
+    
+    updateSpawnHistoryMarkers(false);
 });
 
 $heatMapMons.on("change", function (e){
@@ -275,9 +292,31 @@ function gymLabel(team_name, team_id, gym_points) {
     return str;
 }
 
+function spawnLabel(lat, long, pokemons) {
+    var str = "<div>\
+            <div>Latitude: " + lat + "</div>\
+            <div>Longitude: " + long + "</div>\
+            <div style='padding-top:5px; font-weight: bold;'>Spawns:</div>\
+            <div>";
+
+    var max = 50;
+    $.each(pokemons, function(i, p) {
+        if (i > max)
+            return false;
+
+        var disappear_date = new Date(p.disappear_time);
+        str += "<div>" + p.pokemon_name + " @ " + disappear_date.getDate() + " " + months[disappear_date.getMonth()] + " " + pad(disappear_date.getHours())+ ":"+pad(disappear_date.getMinutes())+":"+pad(disappear_date.getSeconds()) + "</div>";
+    });
+            
+    str += "</div></div>";
+
+    return str;
+}
+
 
 var map_pokemons = {}; // dict containing all pokemons on the map.
 var map_gyms = {};
+var map_spawnhistory = {};
 var gym_types = [ "Uncontested", "Mystic", "Valor", "Instinct" ];
 
 function setupPokemonMarker(item) {
@@ -310,6 +349,22 @@ function setupGymMarker(item) {
 
     marker.infoWindow = new google.maps.InfoWindow({
         content: gymLabel(gym_types[item.team_id], item.team_id, item.gym_points),
+        disableAutoPan: true
+    });
+
+    addListeners(marker);
+    return marker;
+}
+
+function setupSpawnhistoryMarker(item, filteredSpawns) {
+    var marker = new google.maps.Marker({
+        position: {lat: item.latitude, lng: item.longitude},
+        map: map,
+        icon: 'http://mt.google.com/vt/icon?color=ff004C13&name=icons/spotlight/spotlight-waypoint-a.png'
+    });
+
+    marker.infoWindow = new google.maps.InfoWindow({
+        content: spawnLabel(item.latitude, item.longitude, filteredSpawns),
         disableAutoPan: true
     });
 
@@ -353,6 +408,36 @@ function clearStaleMarkers(){
             map_pokemons[key].marker.setMap(null);
             console.log("removing marker with key "+key);
             delete map_pokemons[key];
+        }
+    });
+}
+
+function updateSpawnHistoryMarkers(onlyHideMarkers){
+    $.each(map_spawnhistory, function(key, value) {
+        var filteredPokemons = listOfFilteredSpawnPokemons(value);
+        if (filteredPokemons.length === 0) {
+            //Only remove item from map
+            if (map_spawnhistory[key].marker)
+                map_spawnhistory[key].marker.setMap(null);
+        }
+        //Do not update the markers when we only want to remove the 'hidden' ones by filter or something..
+        else if (!onlyHideMarkers) {
+            if (!map_spawnhistory[key].marker) {
+                //No marker, create marker
+                map_spawnhistory[key].marker = setupSpawnhistoryMarker(item, filteredPokemons);
+            }
+            else {
+                // Marker found, only update the info window in case of any pokemons has been found since last update
+                map_spawnhistory[key].marker.infoWindow = new google.maps.InfoWindow({
+                    content: spawnLabel(value.latitude, value.longitude, filteredPokemons),
+                    disableAutoPan: true
+                });
+
+                if (map_spawnhistory[key].marker.map === null) {
+                    // Make the marker visible
+                    map_spawnhistory[key].marker.setMap(map);
+                }
+            }
         }
     });
 }
@@ -456,14 +541,30 @@ function updateScanLocations(updatedScanLocations) {
     });
 }
 
+function listOfFilteredSpawnPokemons(item) {
+    var pokemons = item.data.filter(function(p) {
+        if (spawnHistory.length > 0 && spawnHistory.indexOf(p.pokemon_id) === -1) {
+            // Ignore, not in the list with spawn pokemon
+            return false;
+        }
+
+        return true;
+    });
+
+    return pokemons;
+}
+
 //               'pokestops': document.getElementById('pokestops-checkbox').checked,
 //               'pokestops-lured': document.getElementById('pokestops-lured-checkbox').checked,
 function updateMap() {
     $.ajax({
         url: "map-data",
         type: 'GET',
-        data: {'pokemon': localStorage.displayPokemons,
-               'gyms': localStorage.displayGyms},
+        data:   {
+                    'pokemon': localStorage.displayPokemons,
+                    'gyms': localStorage.displayGyms,
+                    'spawnhistory': localStorage.displaySpawnhistory
+                },
         dataType: "json"
     }).done(function(result) {
         statusLabels(result["server_status"]);
@@ -515,7 +616,38 @@ function updateMap() {
             }
         });
 
+        $.each(result.spawnhistory, function(i, item){
+            if (!document.getElementById('spawnhistory-checkbox').checked) {
+                return false; // in case the checkbox was unchecked in the meantime.
+            }
+
+            // Check if we should add the spawnpoint.
+            var filteredPokemons = listOfFilteredSpawnPokemons(item);
+
+            // No pokemons for spawnpoint, user filtered on specific pokemons..
+            // Add it to the history list, but do not add it to the map
+            var addToMap = filteredPokemons.length > 0;
+
+            if (item.spawnpoint_id in map_spawnhistory) {
+
+                if (map_spawnhistory[item.spawnpoint_id].last_encounter_id === item.last_encounter_id) {
+                    // Already uptodate. Continue to next item
+                    return true;
+                }
+
+                if (map_spawnhistory[item.spawnpoint_id].marker)
+                    map_spawnhistory[item.spawnpoint_id].marker.setMap(null);
+            }
+
+            if (addToMap)
+                item.marker = setupSpawnhistoryMarker(item, filteredPokemons);
+
+            // Add item to list
+            map_spawnhistory[item.spawnpoint_id] = item;
+        });
+
         clearStaleMarkers();
+        updateSpawnHistoryMarkers(true);
     }).fail(function() {
         $lastRequestLabel.removeClass('label-success label-warning');
         $lastRequestLabel.addClass('label-danger');
@@ -546,6 +678,18 @@ $('#pokemon-checkbox').change(function() {
             map_pokemons[key].marker.setMap(null);
         });
         map_pokemons = {}
+    }
+});
+
+$('#spawnhistory-checkbox').change(function() {
+    localStorage.displaySpawnhistory = this.checked;
+    if(this.checked) {
+        updateMap();
+    } else {
+        $.each(map_spawnhistory, function(key, value) {
+            map_spawnhistory[key].marker.setMap(null);
+        });
+        map_spawnhistory = {}
     }
 });
 
